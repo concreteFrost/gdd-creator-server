@@ -1,2 +1,0 @@
-# gdd-creator-server
- 
