@@ -9,7 +9,6 @@ export const registrationValidator = [
   body("email", "please provide correct email address").isEmail(),
 ];
 
-// Валидатор для создания GddStructure
 export const gddCreateValidator = [
   body("title", "Title is required and must be a valid string")
     .isString()
@@ -37,7 +36,6 @@ export const gddCreateValidator = [
     ),
 ];
 
-// Валидатор для создания GddStructure
 export const gddEditValidator = [
   body("id", "Id for this gdd was not provided").isString().notEmpty(),
   body("title", "Title is required and must be a valid string")
@@ -74,13 +72,27 @@ export const gameplayCreateValidator = [
   }),
 ];
 
-export const cretateTypeValidator = [
+//create mechanics type
+export const createTypeValidator = [
   body("gdd_id", "gdd_id cant be null").isString().notEmpty(),
   body("type", "type name cant be null").isString().notEmpty(),
 ];
 
+//update mechanics type
 export const updateTypeValidator = [
-  body("id", "id cant be null").isString().notEmpty(),
-  body("gdd_id", "gdd_id cant be null").isString().notEmpty(),
+  ...createTypeValidator,
   body("type", "type name cant be null").isString().notEmpty(),
+];
+
+//create character
+export const createCharaccterValidator = [
+  body("name", "name cant be blank").isString().notEmpty(),
+  body("gdd_id", "gdd id signature is invalid")
+    .isUUID("4")
+    .withMessage("Invalid UUID format"),
+];
+
+export const updateCharacterValidator = [
+  ...createCharaccterValidator,
+  body("id", "id cant be blank").isString().notEmpty(),
 ];

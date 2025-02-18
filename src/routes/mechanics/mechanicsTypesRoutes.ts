@@ -9,7 +9,7 @@ import {
   updateType,
 } from "../../controllers/mechanics/mechanicsTypesController";
 import {
-  cretateTypeValidator,
+  createTypeValidator,
   updateTypeValidator,
 } from "../../validators/validation";
 
@@ -17,7 +17,7 @@ const mechanicTypeRoutes: Router = Router();
 
 mechanicTypeRoutes.post(
   "/type/create",
-  cretateTypeValidator,
+  createTypeValidator,
   handleValidationErrors,
   authCheckMiddleware,
   createType

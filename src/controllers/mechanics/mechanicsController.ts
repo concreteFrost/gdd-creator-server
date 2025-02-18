@@ -14,7 +14,7 @@ export const createMechanic = async (req: CustomRequest, res: Response) => {
 
     if (!isGddValid) {
       res.status(403).json({
-        success: "false",
+        success: false,
         message: "GDD not found. Cannot save gameplay.",
       });
       return;
@@ -31,7 +31,7 @@ export const createMechanic = async (req: CustomRequest, res: Response) => {
 
     const mechanic = await MechanicModel.create(newMechanic);
 
-    res.status(200).json({
+    res.status(201).json({
       success: true,
       mechanic,
       examples: examples,
@@ -76,9 +76,9 @@ export const updateMechanic = async (req: CustomRequest, res: Response) => {
 
     await mechanicToEdit.save();
 
-    res.status(200).json({
+    res.status(201).json({
       success: true,
-      mechanicToEdit,
+      mechanic: mechanicToEdit,
     });
   } catch (error) {
     res.status(500).json({
@@ -96,7 +96,7 @@ export const deleteMechanic = async (req: CustomRequest, res: Response) => {
 
     if (!toDelete) {
       res.status(403).json({
-        success: "false",
+        success: false,
         message: "no mechanic with the id provided was found",
       });
       return;
@@ -104,7 +104,7 @@ export const deleteMechanic = async (req: CustomRequest, res: Response) => {
 
     await toDelete.destroy();
 
-    res.status(200).json({ success: true });
+    res.status(201).json({ success: true });
   } catch (error) {
     res.status(500).json({
       success: false,
@@ -124,7 +124,7 @@ export const getMechanic = async (req: CustomRequest, res: Response) => {
       return;
     }
 
-    res.status(200).json({ success: true, mechanic });
+    res.status(201).json({ success: true, mechanic });
   } catch (error) {
     res.status(500).json({
       success: false,
@@ -142,7 +142,7 @@ export const getAllMechanicByGDD = async (
   try {
     const mechanics = await MechanicModel.findAll({ where: { gdd_id: id } });
 
-    res.status(200).json({ success: true, mechanics });
+    res.status(201).json({ success: true, mechanics });
   } catch (error) {
     res.status(500).json({
       success: false,

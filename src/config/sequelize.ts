@@ -7,6 +7,9 @@ import GameplayObjectiveModel from "../models/gameplayObjectiveModel";
 import GameplayProgressionModel from "../models/gameplayProgressionModel";
 import MechanicModel from "../models/mechanics/mechanicModel";
 import MechanicTypeModel from "../models/mechanics/mechanicTypeModel";
+import CharacterModel from "../models/characterModel";
+import LocationModel from "../models/locationModel";
+import LocationsCharactersModel from "../models/locationsUsersModel";
 
 dotenv.config();
 
@@ -24,8 +27,17 @@ const sequelize = new Sequelize({
     GameplayProgressionModel,
     MechanicModel,
     MechanicTypeModel,
+    CharacterModel,
+    LocationModel,
+    LocationsCharactersModel,
   ],
   logging: false,
+  pool: {
+    min: 0,
+    max: 100,
+    idle: 10000,
+    acquire: 30000,
+  },
 });
 
 export default sequelize;

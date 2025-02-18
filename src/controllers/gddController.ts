@@ -6,6 +6,8 @@ import UserModel from "../models/userModel";
 import { Op } from "sequelize";
 import sequelize from "../config/sequelize";
 import GameplayModel from "../models/gameplayModel";
+import path from "path";
+import fs from "fs";
 
 export const createGDD = async (req: CustomRequest, res: Response) => {
   const { title, genre, view, platform } = req.body;
@@ -120,7 +122,7 @@ export const getGDDById = async (req: CustomRequest, res: Response) => {
       res.status(404).json({ message: "GDD not found" });
       return;
     }
-    res.status(200).json({ success: true, gdd });
+    res.status(201).json({ success: true, gdd });
   } catch (error) {
     res.status(500).json({ message: "Something went wrong", error });
   }
@@ -135,7 +137,7 @@ export const getAllGDD = async (req: CustomRequest, res: Response) => {
       res.status(404).json({ success: false, message: "GDD not found" });
       return;
     }
-    res.status(200).json({ success: true, gdd });
+    res.status(201).json({ success: true, gdd });
   } catch (error) {
     res.status(500).json({ message: "Something went wrong", error });
   }
@@ -152,9 +154,17 @@ export const deleteGDD = async (req: CustomRequest, res: Response) => {
       return;
     }
 
+    const folderToDestroy = path.join(process.cwd(), "uploads", id);
+
+    console.log(folderToDestroy);
+
+    if (fs.existsSync(folderToDestroy)) {
+      fs.rmSync(folderToDestroy, { recursive: true, force: true });
+    }
+
     await gdd.destroy();
 
-    res.status(200).json({ success: true });
+    res.status(201).json({ success: true });
   } catch (error) {
     res.status(500).json({ message: "Something went wrong", error });
   }

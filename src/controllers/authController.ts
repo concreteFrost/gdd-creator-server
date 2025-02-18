@@ -43,7 +43,7 @@ export const register = async (req: Request, res: Response) => {
       },
       process.env.SECRET_KEY,
       {
-        expiresIn: "1d",
+        expiresIn: "60d",
       }
     );
 
@@ -99,7 +99,7 @@ export const login = async (req: Request, res: Response) => {
       },
       process.env.SECRET_KEY,
       {
-        expiresIn: "1d",
+        expiresIn: "60d",
       }
     );
 
@@ -122,7 +122,7 @@ export const login = async (req: Request, res: Response) => {
 
 export const checkToken = async (req: Request, res: Response) => {
   try {
-    res.status(200).json({ success: true });
+    res.status(201).json({ success: true });
   } catch (error) {
     res.status(500).json({ success: false });
   }

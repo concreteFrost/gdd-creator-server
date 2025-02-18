@@ -27,7 +27,7 @@ export const createType = async (req: CustomRequest, res: Response) => {
 
     const newType = await MechanicTypeModel.create(mecanicTypeToAdd);
 
-    res.status(200).json({ success: true, newType });
+    res.status(201).json({ success: true, type: newType });
   } catch (error) {
     res.status(500).json({
       success: false,
@@ -65,7 +65,9 @@ export const updateType = async (req: CustomRequest, res: Response) => {
 
     await typeToEdit.save();
 
-    res.status(200).json({ success: true, typeToEdit });
+    res
+      .status(200)
+      .json({ success: true, message: "type was updated", type: typeToEdit });
   } catch (error) {
     res.status(500).json({
       success: false,
@@ -90,7 +92,7 @@ export const deleteType = async (req: CustomRequest, res: Response) => {
 
     await toDelete.destroy();
 
-    res.status(200).json({ success: true });
+    res.status(201).json({ success: true });
   } catch (error) {
     res.status(500).json({
       success: false,
@@ -113,7 +115,7 @@ export const getType = async (req: CustomRequest, res: Response) => {
       return;
     }
 
-    res.status(200).json({ success: true, type });
+    res.status(201).json({ success: true, type });
   } catch (error) {
     res.status(500).json({
       success: false,
@@ -131,7 +133,7 @@ export const getAllTypes = async (req: CustomRequest, res: Response) => {
       where: { gdd_id: id },
     });
 
-    res.status(200).json({ success: true, mechanics: allTypes });
+    res.status(201).json({ success: true, types: allTypes });
   } catch (error) {
     res.status(500).json({
       success: false,
