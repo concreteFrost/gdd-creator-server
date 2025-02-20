@@ -19,7 +19,7 @@ locationRoutes.post(
   createLocation
 );
 
-locationRoutes.post(
+locationRoutes.put(
   "/location/update",
   authCheckMiddleware,
   upload.single("location"),

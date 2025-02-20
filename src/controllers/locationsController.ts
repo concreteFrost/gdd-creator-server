@@ -2,7 +2,6 @@ import { v4 as uuidv4 } from "uuid";
 import { CustomRequest } from "../types/types";
 import { Response } from "express";
 import GDDModel from "../models/gddModel";
-import CharacterModel from "../models/characterModel";
 import {
   getFullFilePath,
   getFullImageUrl,
@@ -62,7 +61,7 @@ export const createLocation = async (req: CustomRequest, res: Response) => {
     res.status(201).json({
       success: true,
       message: "location has been created successfully",
-      newLocation: {
+      location: {
         ...newLocation.dataValues,
         img: getFullImageUrl(req, newLocation.img),
         characters: newCharactersResult.characterIds,
@@ -76,7 +75,8 @@ export const createLocation = async (req: CustomRequest, res: Response) => {
 };
 
 export const updateLocation = async (req: CustomRequest, res: Response) => {
-  const { id, gdd_id, name, description, environment, characters } = req.body;
+  const { id, gdd_id, name, description, environment, characters, imagePath } =
+    req.body;
   const transaction = await sequelize.transaction();
 
   try {
@@ -97,14 +97,6 @@ export const updateLocation = async (req: CustomRequest, res: Response) => {
       return;
     }
 
-    // if record had previous image then delete it
-    if (toEdit.img) {
-      const oldImagePath = path.join(process.cwd(), toEdit.img);
-      if (fs.existsSync(oldImagePath)) fs.unlinkSync(oldImagePath);
-    }
-
-    const img = req.file ? getShortFilePath(req) : null;
-
     const newCharactersResult = await addCharactersToLocation(
       id,
       JSON.parse(characters),
@@ -120,9 +112,18 @@ export const updateLocation = async (req: CustomRequest, res: Response) => {
       return;
     }
 
-    toEdit.name = name;
-    toEdit.description = description;
-    toEdit.environment = environment;
+    const oldImageFullPath = getFullImageUrl(req, toEdit.img);
+    console.log(oldImageFullPath);
+
+    if (oldImageFullPath)
+      if (imagePath !== oldImageFullPath) {
+        // if no image path provided or new image path does not match with old image path
+        const oldImagePath = path.join(process.cwd(), toEdit.img);
+        if (fs.existsSync(oldImagePath)) fs.unlinkSync(oldImagePath); // delete old image
+      }
+
+    // if new image was not provided return old (or null)
+    const img = req.file ? getShortFilePath(req) : imagePath;
 
     // Обновляем поля локации
     await toEdit.update(
@@ -200,6 +201,7 @@ export const getAllLocations = async (req: CustomRequest, res: Response) => {
         return {
           ...location.dataValues,
           characters: characterIds,
+          img: getFullImageUrl(req, location.img),
         };
       })
     );

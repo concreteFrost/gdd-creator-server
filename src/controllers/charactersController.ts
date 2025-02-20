@@ -136,7 +136,7 @@ export const deleteCharacter = async (req: CustomRequest, res: Response) => {
     }
 
     //delete character`s image if image is not null
-    if (toDelete.img !== null) {
+    if (toDelete.img && toDelete.img.trim() !== "") {
       const imagePath = path.join(process.cwd(), toDelete.img);
 
       if (fs.existsSync(imagePath)) {
@@ -150,6 +150,7 @@ export const deleteCharacter = async (req: CustomRequest, res: Response) => {
       .status(201)
       .json({ success: true, message: "the character has been deleted" });
   } catch (error) {
+    console.log(error);
     handleErrorResponse(res, error);
   }
 };
