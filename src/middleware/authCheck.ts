@@ -31,6 +31,7 @@ const authCheckMiddleware = (
 
     // Приведение типа для req, чтобы указать TypeScript, что у него есть свойство user
     req.user = decoded;
+
     next();
   });
 };

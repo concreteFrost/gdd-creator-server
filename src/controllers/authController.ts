@@ -3,6 +3,8 @@ import UserModel, { UserAttributes } from "../models/userModel";
 import { v4 as uuidv4 } from "uuid"; // Corrected import alias
 import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
+import { CustomRequest } from "../types/types";
+import { handleErrorResponse } from "../utils/handleErrorResponse";
 
 export const register = async (req: Request, res: Response) => {
   const { username, email, password_hash } = req.body;
@@ -125,5 +127,47 @@ export const checkToken = async (req: Request, res: Response) => {
     res.status(201).json({ success: true });
   } catch (error) {
     res.status(500).json({ success: false });
+  }
+};
+
+export const changePassword = async (req: CustomRequest, res: Response) => {
+  const { id } = req.user;
+  const { old_password, new_password } = req.body;
+
+  try {
+    const existingUser = await UserModel.findByPk(id);
+
+    if (!existingUser) {
+      res.status(404).json({ success: false, message: "user not found" });
+      return;
+    }
+
+    const isMatch = await bcrypt.compare(
+      old_password,
+      existingUser.password_hash
+    );
+
+    if (!isMatch) {
+      res
+        .status(403)
+        .json({ success: false, message: "Incorrect old password" });
+      return;
+    }
+
+    //генерируем набор случайных символов
+    const salt = await bcrypt.genSalt();
+
+    //генерируем хэш пароля
+    const hash: string = await bcrypt.hash(new_password, salt);
+
+    existingUser.password_hash = hash;
+
+    await existingUser.save();
+
+    res
+      .status(201)
+      .json({ success: true, message: "password has been updated" });
+  } catch (error) {
+    handleErrorResponse(res, error);
   }
 };
