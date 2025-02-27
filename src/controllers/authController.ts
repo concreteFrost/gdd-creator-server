@@ -5,6 +5,7 @@ import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 import { CustomRequest } from "../types/types";
 import { handleErrorResponse } from "../utils/handleErrorResponse";
+import transporter from "../mail/mail";
 
 export const register = async (req: Request, res: Response) => {
   const { username, email, password_hash } = req.body;
@@ -105,6 +106,16 @@ export const login = async (req: Request, res: Response) => {
       }
     );
 
+    // const mailOptions = {
+    //   from: process.env.EMAIL_USER,
+    //   to: "concreteager@gmail.com",
+    //   subject: "Reset your password",
+    //   text: `Click the link to reset your password: `,
+    //   html: `<p>Click the link to reset your password: <a href="">Reset Password</a></p>`,
+    // };
+
+    // await transporter.sendMail(mailOptions);
+
     res.status(201).json({
       success: true,
       token: token,
@@ -114,6 +125,7 @@ export const login = async (req: Request, res: Response) => {
       },
     });
   } catch (error) {
+    console.log(error);
     res.status(500).json({
       success: false,
       message: "Failed to login",
