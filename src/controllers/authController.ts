@@ -6,6 +6,7 @@ import bcrypt from "bcrypt";
 import { CustomRequest } from "../types/types";
 import { handleErrorResponse } from "../utils/handleErrorResponse";
 import transporter from "../mail/mail";
+import { json } from "sequelize";
 
 export const register = async (req: Request, res: Response) => {
   const { username, email, password_hash } = req.body;
@@ -106,16 +107,6 @@ export const login = async (req: Request, res: Response) => {
       }
     );
 
-    // const mailOptions = {
-    //   from: process.env.EMAIL_USER,
-    //   to: "concreteager@gmail.com",
-    //   subject: "Reset your password",
-    //   text: `Click the link to reset your password: `,
-    //   html: `<p>Click the link to reset your password: <a href="">Reset Password</a></p>`,
-    // };
-
-    // await transporter.sendMail(mailOptions);
-
     res.status(201).json({
       success: true,
       token: token,
@@ -181,5 +172,84 @@ export const changePassword = async (req: CustomRequest, res: Response) => {
       .json({ success: true, message: "password has been updated" });
   } catch (error) {
     handleErrorResponse(res, error);
+  }
+};
+
+export const resetPassword = async (req: CustomRequest, res: Response) => {
+  const { token, password } = req.body;
+
+  if (!token) {
+    res.status(400).json({ success: false, message: "token was not provided" });
+    return;
+  }
+
+  try {
+    const decoded = jwt.verify(token, process.env.SECRET_KEY);
+
+    const user = await UserModel.findOne({ where: { email: decoded.email } });
+
+    if (!user) {
+      res.status(400), json({ success: false, message: "user not found" });
+      return;
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+    user.password_hash = hashedPassword;
+    await user.save();
+
+    res.json({ success: true, message: "Password successfully reset" });
+  } catch (error) {
+    handleErrorResponse(res, error);
+  }
+};
+
+export const forgotPassword = async (req: CustomRequest, res: Response) => {
+  const { email } = req.body;
+  console.log("call");
+  try {
+    const isValidEmail = await UserModel.findOne({ where: { email: email } });
+
+    if (!isValidEmail) {
+      res.status(404).json({
+        success: false,
+        message: "User with this email does not exists",
+      });
+      return;
+    }
+
+    const token = jwt.sign({ email }, process.env.SECRET_KEY, {
+      expiresIn: "1h",
+    });
+
+    const resetLink = `http://localhost:9000/reset-password?token=${token}`;
+
+    await transporter.sendMail({
+      from: process.env.EMAIL_USER,
+      to: email,
+      subject: "Password Reset",
+      text: `Here is your password reset link: ${resetLink}`,
+    });
+
+    res.status(201).json({ success: true, message: "Email is on its way" });
+  } catch (error) {
+    console.log(error);
+    handleErrorResponse(res, error);
+  }
+};
+
+export const validatePassResetToken = async (
+  req: CustomRequest,
+  res: Response
+) => {
+  const { token } = req.body;
+
+  try {
+    jwt.verify(token, process.env.SECRET_KEY);
+
+    res.status(201).json({ success: true, message: "" });
+  } catch (error) {
+    res
+      .status(401)
+      .json({ success: false, message: "invalid or expired token" });
   }
 };

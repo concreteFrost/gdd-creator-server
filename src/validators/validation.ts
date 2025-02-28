@@ -3,9 +3,14 @@ import { GameView, GamePlatform } from "../models/gddModel";
 
 export const registrationValidator = [
   body("password_hash", "your password is not secure enough").isLength({
-    min: 4,
+    min: 8,
   }),
   body("username", "name cant be blank").isLength({ min: 1 }),
+  body("email", "please provide correct email address").isEmail(),
+];
+
+export const passResetValidator = [
+  body("email", "email cant be blank").isString().isEmpty(),
   body("email", "please provide correct email address").isEmail(),
 ];
 
