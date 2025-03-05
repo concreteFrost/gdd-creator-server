@@ -1,16 +1,17 @@
 import { v4 as uuidv4 } from "uuid";
-import { CustomRequest } from "../types/types";
+import { CustomRequest, CustomeFile } from "../types/types";
 import { Response } from "express";
 import GDDModel from "../models/gddModel";
 import CharacterModel, { CharacterStructure } from "../models/characterModel";
 import {
   getFullFilePath,
   getFullImageUrl,
-  getShortFilePath,
+  handleFileOverwrite,
 } from "../utils/fileHandlers";
 import fs from "fs";
-import path from "path";
 import { handleErrorResponse } from "../utils/handleErrorResponse";
+import { s3 } from "../multer/multer";
+import { DeleteObjectCommand } from "@aws-sdk/client-s3";
 
 export const createCharacter = async (req: CustomRequest, res: Response) => {
   const { gdd_id, name, abilities, traits, role, backstory } = req.body;
@@ -29,9 +30,11 @@ export const createCharacter = async (req: CustomRequest, res: Response) => {
 
     let img: string | null = null;
 
-    //if file was attached then get his shorten path to save in db
+    // если файл был прикреплен, то получаем его путь для сохранения в базе данных
     if (req.file) {
-      img = getShortFilePath(req);
+      // Используйте полученный путь S3 для изображения
+      const customFile = req.file as CustomeFile;
+      img = customFile.key; // req.file.key хранит путь файла в S3
     }
 
     // Parse the abilities and traits if they are strings containing JSON arrays
@@ -56,10 +59,11 @@ export const createCharacter = async (req: CustomRequest, res: Response) => {
       message: "Character has been created",
       character: {
         ...newCharacter.dataValues,
-        img: getFullImageUrl(req, newCharacter.img), // generate full url before sending to client
+        img: getFullImageUrl(newCharacter.img), // generate full url before sending to client
       },
     });
   } catch (error) {
+    console.log(error);
     handleErrorResponse(res, error);
   }
 };
@@ -85,36 +89,28 @@ export const updateCharacter = async (req: CustomRequest, res: Response) => {
       return;
     }
 
-    const oldImageFullPath = getFullImageUrl(req, toEdit.img);
-
-    if (oldImageFullPath)
-      if (imagePath !== oldImageFullPath) {
-        // if no image path provided or new image path does not match with old image path
-        const oldImagePath = path.join(process.cwd(), toEdit.img);
-        if (fs.existsSync(oldImagePath)) fs.unlinkSync(oldImagePath); // delete old image
-      }
-
-    // if new image was not provided return old (or null)
-    const img = req.file ? getShortFilePath(req) : imagePath;
-
+    // Преобразуем данные способностей и черт
     const parsedAbilities = JSON.parse(abilities);
     const parsedTraits = JSON.parse(traits);
+    let img = await handleFileOverwrite(req, toEdit.img);
 
+    // Обновляем данные персонажа
     Object.assign(toEdit, {
       name,
       role,
       backstory,
       abilities: parsedAbilities,
       traits: parsedTraits,
-      img: img,
+      img: img, // Если нового изображения нет, оставляем старое
     });
     await toEdit.save();
 
+    // Отправляем успешный ответ с обновленным персонажем
     res.status(201).json({
       success: true,
       character: {
         ...toEdit.dataValues,
-        img: getFullImageUrl(req, toEdit.img),
+        img: getFullImageUrl(toEdit.img), // Формируем полный путь к изображению
       },
     });
   } catch (error) {
@@ -136,12 +132,15 @@ export const deleteCharacter = async (req: CustomRequest, res: Response) => {
     }
 
     //delete character`s image if image is not null
-    if (toDelete.img && toDelete.img.trim() !== "") {
-      const imagePath = path.join(process.cwd(), toDelete.img);
+    if (toDelete.img) {
+      const deleteParams = {
+        Bucket: process.env.BUCKET_NAME,
+        Key: toDelete.img,
+      };
 
-      if (fs.existsSync(imagePath)) {
-        fs.unlinkSync(imagePath);
-      }
+      const deleteCommand = new DeleteObjectCommand(deleteParams);
+
+      await s3.send(deleteCommand);
     }
 
     await toDelete.destroy();
@@ -198,11 +197,9 @@ export const getAllCharacters = async (req: CustomRequest, res: Response) => {
 
     const charactersWithPath = allCharacters.map(
       (character: CharacterModel) => {
-        if (character.img !== null) {
-          character.img = getFullImageUrl(req, character.img);
-        }
         return {
           ...character.dataValues,
+          img: getFullImageUrl(character.img),
           traits: JSON.parse(character.traits),
           abilities: JSON.parse(character.abilities),
         };
@@ -232,7 +229,7 @@ export const getCharacter = async (req: CustomRequest, res: Response) => {
       success: true,
       character: {
         ...character.dataValues,
-        img: getFullImageUrl(req, character.img),
+        img: getFullImageUrl(character.img),
       },
     });
   } catch (error) {

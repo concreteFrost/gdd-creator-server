@@ -9,3 +9,7 @@ export interface CustomRequest extends Request {
     email?: string; // Еще одно дополнительное поле
   };
 }
+
+export interface CustomeFile extends Express.Multer.File {
+  key?: string;
+}

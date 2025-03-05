@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from "uuid";
-import { CustomRequest } from "../types/types";
+import { CustomRequest, CustomeFile } from "../types/types";
 import { Response } from "express";
 import GDDModel from "../models/gddModel";
 import {
@@ -23,9 +23,11 @@ export const createLocation = async (req: CustomRequest, res: Response) => {
   try {
     let img: string | null = null;
 
-    //if file was attached then get his shorten path to save in db
+    // если файл был прикреплен, то получаем его путь для сохранения в базе данных
     if (req.file) {
-      img = getShortFilePath(req);
+      // Используйте полученный путь S3 для изображения
+      const customFile = req.file as CustomeFile;
+      img = customFile.key; // req.file.key хранит путь файла в S3
     }
 
     const newLocation = await LocationModel.create(
@@ -63,7 +65,7 @@ export const createLocation = async (req: CustomRequest, res: Response) => {
       message: "location has been created successfully",
       location: {
         ...newLocation.dataValues,
-        img: getFullImageUrl(req, newLocation.img),
+        img: getFullImageUrl(newLocation.img),
         characters: newCharactersResult.characterIds,
       },
     });
@@ -112,8 +114,7 @@ export const updateLocation = async (req: CustomRequest, res: Response) => {
       return;
     }
 
-    const oldImageFullPath = getFullImageUrl(req, toEdit.img);
-    console.log(oldImageFullPath);
+    const oldImageFullPath = getFullImageUrl(toEdit.img);
 
     if (oldImageFullPath)
       if (imagePath !== oldImageFullPath) {
@@ -137,7 +138,7 @@ export const updateLocation = async (req: CustomRequest, res: Response) => {
       success: true,
       location: {
         ...toEdit.dataValues,
-        img: getFullImageUrl(req, img),
+        img: getFullImageUrl(img),
         characters: newCharactersResult.characterIds,
       },
     });
@@ -171,7 +172,7 @@ export const getLocation = async (req: CustomRequest, res: Response) => {
       success: true,
       character: {
         ...location.dataValues,
-        img: getFullImageUrl(req, location.img),
+        img: getFullImageUrl(location.img),
         characters: locationCharacters.map((ch) => ch.character_id),
       },
     });
@@ -201,7 +202,7 @@ export const getAllLocations = async (req: CustomRequest, res: Response) => {
         return {
           ...location.dataValues,
           characters: characterIds,
-          img: getFullImageUrl(req, location.img),
+          img: getFullImageUrl(location.img),
         };
       })
     );

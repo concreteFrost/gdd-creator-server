@@ -1,22 +1,38 @@
 import multer from "multer";
 import path from "path";
-import fs from "fs";
-import { getFullFilePath } from "../utils/fileHandlers";
+import { S3Client } from "@aws-sdk/client-s3";
+import multerS3 from "multer-s3";
 
-const storage = multer.diskStorage({
-  destination(req, file, callback) {
-    const uploadPath = getFullFilePath(req.body.gdd_id, file.fieldname);
+export const s3 = new S3Client({
+  region: process.env.BUCKET_REGION,
+  credentials: {
+    accessKeyId: process.env.BUCKET_ACCESS_KEY,
+    secretAccessKey: process.env.BUCKET_SECRET_KEY,
+  },
+});
 
-    if (!fs.existsSync(uploadPath)) {
-      fs.mkdirSync(uploadPath, { recursive: true });
-    }
-    callback(null, uploadPath);
+const getS3FilePath = (gdd_id, fieldname, originalname) => {
+  const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+  const ext = path.extname(originalname);
+  return `uploads/${gdd_id}/${fieldname}/${uniqueSuffix}${ext}`;
+};
+
+// Настройка Multer для S3 без использования ACL
+const storage = multerS3({
+  s3: s3,
+  bucket: process.env.BUCKET_NAME,
+  metadata: (req, file, cb) => {
+    cb(null, { fieldName: file.fieldname });
   },
-  filename(req, file, callback) {
-    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-    const ext = path.extname(file.originalname);
-    callback(null, file.fieldname + "-" + uniqueSuffix + ext);
+  key: (req, file, cb) => {
+    const s3Path = getS3FilePath(
+      req.body.gdd_id,
+      file.fieldname,
+      file.originalname
+    );
+    cb(null, s3Path);
   },
+  // Убираем параметр ACL
 });
 
 const types = ["image/jpeg", "image/png", "image/webp", "image/jpg"];
