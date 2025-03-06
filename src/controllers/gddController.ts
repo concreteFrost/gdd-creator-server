@@ -8,6 +8,9 @@ import sequelize from "../config/sequelize";
 import GameplayModel from "../models/gameplayModel";
 import path from "path";
 import fs from "fs";
+import LocationModel from "../models/locationModel";
+import CharacterModel from "../models/characterModel";
+import { deleteFile } from "../utils/fileHandlers";
 
 export const createGDD = async (req: CustomRequest, res: Response) => {
   const { title, genre, view, platform } = req.body;
@@ -154,12 +157,17 @@ export const deleteGDD = async (req: CustomRequest, res: Response) => {
       return;
     }
 
-    const folderToDestroy = path.join(process.cwd(), "uploads", id);
+    const allLocations = await LocationModel.findAll({ where: { gdd_id: id } });
+    const allCharacters = await CharacterModel.findAll({
+      where: { gdd_id: id },
+    });
 
-    console.log(folderToDestroy);
+    for (const location of allLocations) {
+      await deleteFile(location.img);
+    }
 
-    if (fs.existsSync(folderToDestroy)) {
-      fs.rmSync(folderToDestroy, { recursive: true, force: true });
+    for (const character of allCharacters) {
+      await deleteFile(character.img);
     }
 
     await gdd.destroy();

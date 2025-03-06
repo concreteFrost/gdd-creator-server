@@ -1,11 +1,12 @@
 import { v4 as uuidv4 } from "uuid";
 import { CustomRequest, CustomeFile } from "../types/types";
-import { Response } from "express";
+import e, { Response } from "express";
 import GDDModel from "../models/gddModel";
 import {
+  deleteFile,
   getFullFilePath,
   getFullImageUrl,
-  getShortFilePath,
+  handleFileOverwrite,
 } from "../utils/fileHandlers";
 
 import { handleErrorResponse } from "../utils/handleErrorResponse";
@@ -13,8 +14,9 @@ import sequelize from "../config/sequelize";
 import LocationModel from "../models/locationModel";
 import LocationsCharactersModel from "../models/locationsUsersModel";
 import fs from "fs";
-import path from "path";
 import { addCharactersToLocation } from "../utils/locationUtils";
+import { DeleteObjectCommand } from "@aws-sdk/client-s3";
+import { s3 } from "../s3/s3";
 
 export const createLocation = async (req: CustomRequest, res: Response) => {
   const { gdd_id, name, description, environment, characters } = req.body;
@@ -114,17 +116,7 @@ export const updateLocation = async (req: CustomRequest, res: Response) => {
       return;
     }
 
-    const oldImageFullPath = getFullImageUrl(toEdit.img);
-
-    if (oldImageFullPath)
-      if (imagePath !== oldImageFullPath) {
-        // if no image path provided or new image path does not match with old image path
-        const oldImagePath = path.join(process.cwd(), toEdit.img);
-        if (fs.existsSync(oldImagePath)) fs.unlinkSync(oldImagePath); // delete old image
-      }
-
-    // if new image was not provided return old (or null)
-    const img = req.file ? getShortFilePath(req) : imagePath;
+    const img = await handleFileOverwrite(req, toEdit.img);
 
     // Обновляем поля локации
     await toEdit.update(
@@ -143,6 +135,7 @@ export const updateLocation = async (req: CustomRequest, res: Response) => {
       },
     });
   } catch (error) {
+    console.log(error);
     handleErrorResponse(res, error);
   }
 };
@@ -162,10 +155,6 @@ export const getLocation = async (req: CustomRequest, res: Response) => {
     const locationCharacters = await LocationsCharactersModel.findAll({
       where: { location_id: id },
       attributes: ["character_id"],
-      // include: {
-      //   model: CharacterModel,
-      //   attributes: ["name", "role", "img"],
-      // },
     });
 
     res.status(201).json({
@@ -229,12 +218,15 @@ export const deleteLocation = async (req: CustomRequest, res: Response) => {
     }
 
     //delete character`s image if image is not null
-    if (toDelete.img !== null) {
-      const imagePath = path.join(process.cwd(), toDelete.img);
+    if (toDelete.img) {
+      const deleteParams = {
+        Bucket: process.env.BUCKET_NAME,
+        Key: toDelete.img,
+      };
 
-      if (fs.existsSync(imagePath)) {
-        fs.unlinkSync(imagePath);
-      }
+      const deleteCommand = new DeleteObjectCommand(deleteParams);
+
+      await s3.send(deleteCommand);
     }
 
     await toDelete.destroy();
@@ -247,6 +239,7 @@ export const deleteLocation = async (req: CustomRequest, res: Response) => {
   }
 };
 
+//not in use
 export const deleteAllLocations = async (req: CustomRequest, res: Response) => {
   try {
     const toDelete = await LocationModel.findAll({
@@ -258,15 +251,14 @@ export const deleteAllLocations = async (req: CustomRequest, res: Response) => {
       return;
     }
 
+    for (const location of toDelete) {
+      await deleteFile(location.img);
+    }
+
     await LocationModel.destroy({ where: { gdd_id: req.params.id } });
 
     const folderToCheck = getFullFilePath(req.params.id, "location");
     console.log(folderToCheck);
-
-    //delete 'location' folder
-    if (fs.existsSync(folderToCheck)) {
-      fs.rmSync(folderToCheck, { recursive: true, force: true });
-    }
 
     res.status(201).json({ success: true });
   } catch (error) {

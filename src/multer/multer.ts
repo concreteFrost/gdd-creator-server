@@ -2,20 +2,7 @@ import multer from "multer";
 import path from "path";
 import { S3Client } from "@aws-sdk/client-s3";
 import multerS3 from "multer-s3";
-
-export const s3 = new S3Client({
-  region: process.env.BUCKET_REGION,
-  credentials: {
-    accessKeyId: process.env.BUCKET_ACCESS_KEY,
-    secretAccessKey: process.env.BUCKET_SECRET_KEY,
-  },
-});
-
-const getS3FilePath = (gdd_id, fieldname, originalname) => {
-  const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-  const ext = path.extname(originalname);
-  return `uploads/${gdd_id}/${fieldname}/${uniqueSuffix}${ext}`;
-};
+import { s3, getS3FilePath } from "../s3/s3";
 
 // Настройка Multer для S3 без использования ACL
 const storage = multerS3({

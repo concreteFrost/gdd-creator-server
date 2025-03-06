@@ -7,6 +7,10 @@ import { CustomRequest } from "../types/types";
 import { handleErrorResponse } from "../utils/handleErrorResponse";
 import transporter from "../mail/mail";
 import { json } from "sequelize";
+import GDDModel from "../models/gddModel";
+import LocationModel from "../models/locationModel";
+import CharacterModel from "../models/characterModel";
+import { deleteFile } from "../utils/fileHandlers";
 
 export const register = async (req: Request, res: Response) => {
   const { username, email, password_hash } = req.body;
@@ -50,6 +54,14 @@ export const register = async (req: Request, res: Response) => {
         expiresIn: "60d",
       }
     );
+
+    await transporter.sendMail({
+      from: process.env.EMAIL_USER,
+      to: process.env.EMAIL_USER,
+      subject: "New user registered",
+      text: `${username} successfully registered.
+      email: ${email}`,
+    });
 
     // Respond with the created user or a success message
     res.status(201).json({
@@ -205,7 +217,7 @@ export const resetPassword = async (req: CustomRequest, res: Response) => {
 
 export const forgotPassword = async (req: CustomRequest, res: Response) => {
   const { email } = req.body;
-  console.log("call");
+
   try {
     const isValidEmail = await UserModel.findOne({ where: { email: email } });
 
@@ -251,5 +263,44 @@ export const validatePassResetToken = async (
     res
       .status(401)
       .json({ success: false, message: "invalid or expired token" });
+  }
+};
+
+export const deleteAccount = async (req: CustomRequest, res: Response) => {
+  try {
+    const toDelete = await UserModel.findByPk(req.user.id);
+
+    if (!toDelete) {
+      res.status(403).json({ succes: false, message: "user not found" });
+      return;
+    }
+
+    const gdds = await GDDModel.findAll({ where: { user_id: req.user.id } });
+
+    for (const gdd of gdds) {
+      console.log(gdd);
+      const allLocations = await LocationModel.findAll({
+        where: { gdd_id: gdd.id },
+      });
+      const allCharacters = await CharacterModel.findAll({
+        where: { gdd_id: gdd.id },
+      });
+
+      for (const location of allLocations) {
+        await deleteFile(location.img); // Ждём, пока файл не удалится
+      }
+
+      for (const character of allCharacters) {
+        await deleteFile(character.img); // Ждём, пока файл не удалится
+      }
+    }
+
+    await GDDModel.destroy({ where: { user_id: req.user.id } });
+    await toDelete.destroy();
+
+    res.status(200).json({ success: true, message: "user was deleted" });
+  } catch (error) {
+    console.log(error);
+    handleErrorResponse(res, error);
   }
 };

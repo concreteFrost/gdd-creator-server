@@ -4,13 +4,12 @@ import { Response } from "express";
 import GDDModel from "../models/gddModel";
 import CharacterModel, { CharacterStructure } from "../models/characterModel";
 import {
-  getFullFilePath,
+  deleteFile,
   getFullImageUrl,
   handleFileOverwrite,
 } from "../utils/fileHandlers";
-import fs from "fs";
 import { handleErrorResponse } from "../utils/handleErrorResponse";
-import { s3 } from "../multer/multer";
+import { s3 } from "../s3/s3";
 import { DeleteObjectCommand } from "@aws-sdk/client-s3";
 
 export const createCharacter = async (req: CustomRequest, res: Response) => {
@@ -30,11 +29,11 @@ export const createCharacter = async (req: CustomRequest, res: Response) => {
 
     let img: string | null = null;
 
-    // если файл был прикреплен, то получаем его путь для сохранения в базе данных
+    //use s3 key if file was attached
+    //that contains full file path
     if (req.file) {
-      // Используйте полученный путь S3 для изображения
       const customFile = req.file as CustomeFile;
-      img = customFile.key; // req.file.key хранит путь файла в S3
+      img = customFile.key;
     }
 
     // Parse the abilities and traits if they are strings containing JSON arrays
@@ -92,6 +91,7 @@ export const updateCharacter = async (req: CustomRequest, res: Response) => {
     // Преобразуем данные способностей и черт
     const parsedAbilities = JSON.parse(abilities);
     const parsedTraits = JSON.parse(traits);
+
     let img = await handleFileOverwrite(req, toEdit.img);
 
     // Обновляем данные персонажа
@@ -154,6 +154,7 @@ export const deleteCharacter = async (req: CustomRequest, res: Response) => {
   }
 };
 
+//not in use
 export const deleteAllCharacters = async (
   req: CustomRequest,
   res: Response
@@ -168,14 +169,11 @@ export const deleteAllCharacters = async (
       return;
     }
 
-    await CharacterModel.destroy({ where: { gdd_id: req.params.id } });
-
-    const folderToCheck = getFullFilePath(req.params.id, "character");
-
-    //delete 'character' folder
-    if (fs.existsSync(folderToCheck)) {
-      fs.rmSync(folderToCheck, { recursive: true, force: true });
+    for (const character of toDelete) {
+      await deleteFile(character.img);
     }
+
+    await CharacterModel.destroy({ where: { gdd_id: req.params.id } });
 
     res.status(201).json({ success: true });
   } catch (error) {

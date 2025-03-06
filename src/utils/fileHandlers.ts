@@ -3,9 +3,7 @@ import { CustomRequest } from "../types/types";
 import fs from "fs";
 import { CustomeFile } from "../types/types";
 import { DeleteObjectCommand } from "@aws-sdk/client-s3";
-import { s3 } from "../multer/multer";
-import CharacterModel from "../models/characterModel";
-import LocationModel from "../models/locationModel";
+import { s3 } from "../s3/s3";
 
 export enum FolderType {
   character = "character",
@@ -94,7 +92,8 @@ export async function handleFileOverwrite(
 
   return img ?? existingImage; // Если изображение не менялось, оставляем старый путь
 }
-async function deleteFile(img: string) {
+
+export async function deleteFile(img: string) {
   if (!img) return;
 
   const deleteParams = {
